@@ -15,6 +15,7 @@ public class RayTrace : MonoBehaviour {
 	private float fl;
 	private float tmpfl;
 	private Ray ray;
+	private Shader reflectiveShader;
 
 	void Awake(){
 		screen = new Texture2D (Screen.width, Screen.height);
@@ -31,6 +32,7 @@ public class RayTrace : MonoBehaviour {
 			GenerateColliders(mf);
 		}
 
+		reflectiveShader = Shader.Find("Specular");
 		lightsArr = FindObjectsOfType (typeof(Light)) as Light[];
 
 		for (int x = 0; x < screen.width; x ++) {
@@ -52,7 +54,7 @@ public class RayTrace : MonoBehaviour {
 		if(stack < Maxstack && Physics.Raycast (origin, direction, out rayTraceHit, GetComponent<Camera> ().farClipPlane, collisionMask)){
 
 			//defensive programming
-			if (rayTraceHit.collider && rayTraceHit.collider.transform.parent) {
+			if (rayTraceHit.collider != null && rayTraceHit.collider.transform.parent != null) {
 
 				//Get material
 				if (rayTraceHit.collider.transform.parent.GetComponent<MeshFilter>().mesh.subMeshCount > 1) {
@@ -63,25 +65,17 @@ public class RayTrace : MonoBehaviour {
 				}
 					
 				//Get Pixel colour
-				if (!rayTraceMat.mainTexture.Equals (null)) {
+				if (rayTraceMat.mainTexture) {
 					Texture2D mainTex = rayTraceMat.mainTexture as Texture2D;
 					rayTraceColour = mainTex.GetPixelBilinear (rayTraceHit.textureCoord.x, rayTraceHit.textureCoord.y);
 				} else {
 					rayTraceColour = rayTraceMat.color;
 				}
 
-				//alpha
-				if (rayTraceColour.a < 1) {
-					rayTraceColour *= rayTraceColour.a;
-					rayTraceColour += (1-rayTraceColour.a)*TraceRay(rayTraceHit.point-rayTraceHit.normal*0.01f, direction, stack+1);
-				}
+				Mesh tempMesh = rayTraceHit.collider.transform.parent.GetComponent<MeshFilter>().mesh as Mesh;
+				rayTraceColour *= TraceLight(rayTraceHit.point+rayTraceHit.normal*0.0001f, InterpolateNormal(rayTraceHit.point, rayTraceHit.normal, tempMesh, rayTraceHit.triangleIndex, rayTraceHit.transform));
 
-				//reflections
-
-
-				//lighting
-				rayTraceColour *= TraceLight(rayTraceHit.point+rayTraceHit.normal*0.0001f, InterpolateNormal(rayTraceHit.point, rayTraceHit.normal, rayTraceHit.collider.transform.parent.GetComponent<MeshFilter>().mesh, rayTraceHit.triangleIndex, rayTraceHit.transform));
-
+				rayTraceColour.a = 1;
 
 			} else {
 				//debugging
@@ -89,12 +83,53 @@ public class RayTrace : MonoBehaviour {
 			}
 		} else {
 			if (RenderSettings.skybox) {
-				//skybox
+				rayTraceColour = SkyboxTrace (direction, RenderSettings.skybox);
+				rayTraceColour += Color.white * (1 - rayTraceColour.a) / 10;
+				rayTraceColour.a = 1;
+
+				return rayTraceColour;
 			} else {
 				rayTraceColour = Color.black;
 			}
 		}
 		return rayTraceColour;
+	}
+
+	Color SkyboxTrace(Vector3 direction, Material skybox){
+		if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y)) {
+			if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z)) {
+				if (direction.x < 0) {
+					return (skybox.GetTexture("_LeftTex") as Texture2D).GetPixelBilinear((-direction.z/-direction.x+1)/2, (direction.y/-direction.x+1)/2);
+				}
+				else{
+					return (skybox.GetTexture("_RightTex") as Texture2D).GetPixelBilinear((direction.z/direction.x+1)/2, (direction.y/direction.x+1)/2);
+				}
+			}
+			else{
+				if (direction.z < 0) {
+					return (skybox.GetTexture("_BackTex") as Texture2D).GetPixelBilinear((direction.x/-direction.z+1)/2, (direction.y/-direction.z+1)/2);
+				}
+				else{
+					return (skybox.GetTexture("_FrontTex") as Texture2D).GetPixelBilinear((-direction.x/direction.z+1)/2, (direction.y/direction.z+1)/2);
+				}
+			}
+		}
+		else if (Mathf.Abs(direction.y) > Mathf.Abs(direction.z)){
+			if (direction.y < 0) {
+				return (skybox.GetTexture("_DownTex") as Texture2D).GetPixelBilinear((-direction.x/-direction.y+1)/2, (direction.z/-direction.y+1)/2);
+			}
+			else{
+				return (skybox.GetTexture("_UpTex") as Texture2D).GetPixelBilinear((-direction.x/direction.y+1)/2, (-direction.z/direction.y+1)/2);
+			}
+		}
+		else{
+			if (direction.z < 0) {
+				return (skybox.GetTexture("_BackTex") as Texture2D).GetPixelBilinear((direction.x/-direction.z+1)/2, (direction.y/-direction.z+1)/2);
+			}
+			else{
+				return (skybox.GetTexture("_FrontTex") as Texture2D).GetPixelBilinear((-direction.x/direction.z+1)/2, (direction.y/direction.z+1)/2);
+			}
+		}
 	}
 
 	//Blend colour between the vector points
