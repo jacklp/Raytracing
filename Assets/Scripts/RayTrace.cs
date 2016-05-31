@@ -5,7 +5,6 @@ public class RayTrace : MonoBehaviour {
 
 	public Texture2D screen;
 	public Light[] lightsArr;
-	public int Maxstack;
 
 	private RaycastHit rayTraceHit;
 	private Color rayTraceColour;
@@ -19,7 +18,6 @@ public class RayTrace : MonoBehaviour {
 
 	void Awake(){
 		screen = new Texture2D (Screen.width, Screen.height);
-		Maxstack = 2;
 	}
 
 	void OnGUI(){
@@ -45,13 +43,13 @@ public class RayTrace : MonoBehaviour {
 
 	Color TracePixel(Vector2 pos) {
 		ray = GetComponent<Camera>().ScreenPointToRay(new Vector3(pos.x, pos.y, 0));
-		return TraceRay(ray.origin, ray.direction, 0);
+		return TraceRay(ray.origin, ray.direction);
 	}
 
-	Color TraceRay(Vector3 origin, Vector3 direction, int stack){
+	Color TraceRay(Vector3 origin, Vector3 direction){
 
 		// Raycast hit
-		if(stack < Maxstack && Physics.Raycast (origin, direction, out rayTraceHit, GetComponent<Camera> ().farClipPlane, collisionMask)){
+		if(Physics.Raycast (origin, direction, out rayTraceHit, GetComponent<Camera> ().farClipPlane, collisionMask)){
 
 			//defensive programming
 			if (rayTraceHit.collider != null && rayTraceHit.collider.transform.parent != null) {
