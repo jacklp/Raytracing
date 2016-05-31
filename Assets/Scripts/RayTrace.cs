@@ -71,7 +71,7 @@ public class RayTrace : MonoBehaviour {
 				}
 
 				Mesh tempMesh = rayTraceHit.collider.transform.parent.GetComponent<MeshFilter>().mesh as Mesh;
-				rayTraceColour *= TraceLight(rayTraceHit.point+rayTraceHit.normal*0.0001f, InterpolateNormal(rayTraceHit.point, rayTraceHit.normal, tempMesh, rayTraceHit.triangleIndex, rayTraceHit.transform));
+				//rayTraceColour *= TraceLight(rayTraceHit.point+rayTraceHit.normal*0.0001f, InterpolateNormal(rayTraceHit.point, rayTraceHit.normal, tempMesh, rayTraceHit.triangleIndex, rayTraceHit.transform));
 
 				rayTraceColour.a = 1;
 
